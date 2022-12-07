@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dirt-tile-server.fullname" . }}
+  labels:
+    {{- include "dirt-tile-server.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "dirt-tile-server.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- if .Values.recreatePods }}
+        rollme: {{ randAlphaNum 5 | quote }}
+        {{- end }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "dirt-tile-server.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "dirt-tile-server.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          env:
+          - name: POSTGRES_CONNECTION
+            valueFrom:
+              secretKeyRef:
+                name: "{{ .Values.pgconnectonSecretName}}"
+                key: pgconnection
+                optional: false
+          - name: TABLE_COLUMN
+            value: {{ .Values.configs.tablecolumn }}
+          - name: TABLE_NAME
+            value: {{ .Values.configs.tablename }}
+          - name: SERVER_PORT
+            value: {{ .Values.configs.serverport }}
+          - name: SERVER_LOGGER
+            value: {{ .Values.configs.serverlogger }}
+          - name: FORMS_ENDPOINT
+            value: {{ .Values.configs.formsendpoint }}
+          - name: CORS_ORIGINS
+            value: {{ .Values.configs.corsorigins }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: [ "npm", "start" ]
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPort }}
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
