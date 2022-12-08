@@ -73,8 +73,8 @@ configs:
   tablename: "logger_instance"
   serverport: "3000"
   serverlogger: "true"
-  formsendpoint: "https://stage-api.ona.io/api/v1/forms/"
-  corsorigins: '["https://stage.ona.io"]'
+  formsendpoint: "https://<your-onadata-url>/api/v1/forms/"
+  corsorigins: '["https://<your-onadata-url>"]'
 
 pgconnectonSecretName: "pgconnectionsecret"
 pgconnection: ""
