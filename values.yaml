@@ -76,8 +76,9 @@ configs:
   formsendpoint: "https://stage-api.ona.io/api/v1/forms/"
   corsorigins: '["https://stage.ona.io"]'
 
-pgconnection: ''
-# we are going to get this from a secret
+pgconnectonSecretName: "pgconnectionsecret"
+pgconnection: ""
+# we are going to get this from a helm secret
 # example "postgres://onadatauser:onadatapass@<your ip>:5432/onadata"
 
 autoscaling:
@@ -110,4 +111,3 @@ readinessProbe:
   timeoutSeconds: 5
   periodSeconds: 10
   failureThreshold: 2
-

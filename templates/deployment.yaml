@@ -36,24 +36,24 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           env:
-          - name: POSTGRES_CONNECTION
-            valueFrom:
-              secretKeyRef:
-                name: "{{ .Values.pgconnectonSecretName}}"
-                key: pgconnection
-                optional: false
-          - name: TABLE_COLUMN
-            value: {{ .Values.configs.tablecolumn }}
-          - name: TABLE_NAME
-            value: {{ .Values.configs.tablename }}
-          - name: SERVER_PORT
-            value: {{ .Values.configs.serverport }}
-          - name: SERVER_LOGGER
-            value: {{ .Values.configs.serverlogger }}
-          - name: FORMS_ENDPOINT
-            value: {{ .Values.configs.formsendpoint }}
-          - name: CORS_ORIGINS
-            value: {{ .Values.configs.corsorigins }}
+            - name: POSTGRES_CONNECTION
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.pgconnectonSecretName }}
+                  key: pgconnection
+                  optional: false
+            - name: TABLE_COLUMN
+              value: {{ .Values.configs.tablecolumn }}
+            - name: TABLE_NAME
+              value: {{ .Values.configs.tablename }}
+            - name: SERVER_LOGGER
+              value: {{ .Values.configs.serverlogger | quote }}
+            - name: SERVER_PORT
+              value: {{ .Values.configs.serverport | quote }}
+            - name: FORMS_ENDPOINT
+              value: {{ .Values.configs.formsendpoint }}
+            - name: CORS_ORIGINS
+              value: {{ .Values.configs.corsorigins | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: [ "npm", "start" ]
           ports:
