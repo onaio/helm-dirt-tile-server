@@ -79,10 +79,15 @@ configs:
 pgConnections:
  - secretName: db1
    secretValue: "test-db-url"
-# we are going to get this from a helm secret
-# example:
+
+# We are going to get this from a helm secret
+# Example:
 # -secretName: db1
 #  secretValue: "postgres://onadatauser:onadatapass@<your ip>:5432/onadata"
+
+# Set this to true if you want to use an existing secret.
+# If you do, make sure to set the secret name `pgConnections[i].secretName` config.
+pgconnectionUseExistingSecret: false
 
 autoscaling:
   enabled: false
