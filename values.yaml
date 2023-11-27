@@ -76,10 +76,11 @@ configs:
   formsendpoint: "https://<your-onadata-url>/api/v1/forms/"
   corsorigins: '["https://<your-onadata-url>"]'
 
+# set this to true if you want to use an existing secret. If you do, make sure to set the secret name `pgconnectonSecretName` below as well.
+pgconnectionUseExistingSecret: false
 pgconnectonSecretName: "pgconnectionsecret"
+# if not using an existing secret, set this to the connection string example "postgres://onadatauser:onadatapass@<your ip>:5432/onadata"
 pgconnection: ""
-# we are going to get this from a helm secret
-# example "postgres://onadatauser:onadatapass@<your ip>:5432/onadata"
 
 autoscaling:
   enabled: false
