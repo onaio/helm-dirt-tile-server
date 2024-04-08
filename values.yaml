@@ -76,10 +76,13 @@ configs:
   formsendpoint: "https://<your-onadata-url>/api/v1/forms/"
   corsorigins: '["https://<your-onadata-url>"]'
 
-pgconnectonSecretName: "pgconnectionsecret"
-pgconnection: ""
+pgConnections:
+ - secretName: db1
+   secretValue: "test-db-url"
 # we are going to get this from a helm secret
-# example "postgres://onadatauser:onadatapass@<your ip>:5432/onadata"
+# example:
+# -secretName: db1
+#  secretValue: "postgres://onadatauser:onadatapass@<your ip>:5432/onadata"
 
 autoscaling:
   enabled: false
