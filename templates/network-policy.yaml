@@ -1,0 +1,85 @@
+{{- if .Values.networkPolicy.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "dirt-tile-server.fullname" . }}
+  labels:
+    {{- include "dirt-tile-server.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "dirt-tile-server.selectorLabels"  $ | nindent 6 }}
+  policyTypes:
+    {{- if (not .Values.networkPolicy.ingress) | and (not .Values.networkPolicy.egress) }}
+    {{- fail "provide at least of ingress or egress policies" }}
+    {{- end }}
+    {{- if .Values.networkPolicy.ingress }}
+    - Ingress
+    {{- end }}
+    {{- if .Values.networkPolicy.egress }}
+    - Egress
+    {{- end }}
+  egress:
+  {{- $namespace := .Release.Namespace }}
+  {{- $egressList := .Values.networkPolicy.egress }}
+  {{- $ingressList := .Values.networkPolicy.ingress }}
+  {{- range $key,$egress := $egressList }}
+    {{- if $egress.ipBlock | and ( $egress.podMatchLabels | or $egress.namespace ) }}
+    {{- fail "provide only ipBlock without podMatchLabels and namespace" }}
+    {{- end }}
+    {{- if $egress.namespace | and (not $egress.podMatchLabels ) }}
+    {{- fail "provide namespace with podMatchLabels" }}
+    {{- end }}
+    {{- if (not $egress.ipBlock) | and (not $egress.podMatchLabels ) }}
+    {{- fail "provide ipBlock or podMatchLabels" }}
+    {{- end }}
+    - {{- if $egress.ports }}
+      ports: {{ toYaml $egress.ports | nindent 8 }}
+      {{- end }}
+      to:
+        - {{- if $egress.ipBlock }}
+          ipBlock:
+            cidr: {{ $egress.ipBlock }}
+          {{- end }}
+          {{- if $egress.podMatchLabels }}
+          podSelector:
+            matchLabels: {{ toYaml $egress.podMatchLabels | nindent 14 }}
+          {{- end }}
+          {{- if $egress.namespace }}
+          namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $egress.namespace }}
+          {{- end }}
+  {{- end }}
+  ingress:
+  {{- range $key,$ingress := $ingressList }}
+    {{- if and $ingress.ipBlock (or $ingress.podMatchLabels $ingress.namespace ) }}
+    {{- fail "provide only ipBlock without podMatchLabels and namespace" }}
+    {{- end }}
+    {{- if $ingress.namespace | and (not $ingress.podMatchLabels ) }}
+    {{- fail "provide namespace with podMatchLabels" }}
+    {{- end }}
+    {{- if (not $ingress.ipBlock) | and (not $ingress.podMatchLabels ) }}
+    {{- fail "provide ipBlock or podMatchLabels" }}
+    {{- end }}
+    - {{- if $ingress.ports }}
+      ports: {{ toYaml $ingress.ports | nindent 8 }}
+      {{- end }}
+      from:
+        - {{- if $ingress.ipBlock }}
+          ipBlock:
+            cidr: {{ $ingress.ipBlock }}
+          {{- end }}
+          {{- if $ingress.podMatchLabels }}
+          podSelector:
+            matchLabels: {{ toYaml $ingress.podMatchLabels | nindent 14 }}
+          {{- end }}
+          {{- if $ingress.namespace }}
+          namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $ingress.namespace }}
+          {{- end }}
+  {{- end }}
+{{- end }}
+

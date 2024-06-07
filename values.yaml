@@ -8,7 +8,7 @@ image:
   repository: apiyo/dirt-simple-postgis-http-api
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 0.0.2
+  tag: 0.3.10
 
 imagePullSecrets: []
 nameOverride: ""
@@ -16,7 +16,7 @@ fullnameOverride: ""
 
 serviceAccount:
   # Specifies whether a service account should be created
-  create: true
+  create: false
   # Annotations to add to the service account
   annotations: {}
   # The name of the service account to use.
@@ -73,8 +73,8 @@ configs:
   tablename: "logger_instance"
   serverport: "3000"
   serverlogger: "true"
-  formsendpoint: "https://<your-onadata-url>/api/v1/forms/"
-  corsorigins: '["https://<your-onadata-url>"]'
+  # formsendpoint: "https://<your-onadata-url>/api/v1/forms/"
+  # corsorigins: '["https://<your-onadata-url>"]'
 
 pgConnections:
  - secretName: db1
@@ -119,3 +119,7 @@ readinessProbe:
   timeoutSeconds: 5
   periodSeconds: 10
   failureThreshold: 2
+
+networkPolicy:
+  enabled: false
+
