@@ -8,7 +8,7 @@ image:
   repository: apiyo/dirt-simple-postgis-http-api
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 0.0.2
+  tag: 0.3.10
 
 imagePullSecrets: []
 nameOverride: ""
@@ -73,8 +73,8 @@ configs:
   tablename: "logger_instance"
   serverport: "3000"
   serverlogger: "true"
-  formsendpoint: "https://<your-onadata-url>/api/v1/forms/"
-  corsorigins: '["https://<your-onadata-url>"]'
+  # formsendpoint: "https://<your-onadata-url>/api/v1/forms/"
+  # corsorigins: '["https://<your-onadata-url>"]'
 
 pgConnections:
  - secretName: db1
