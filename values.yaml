@@ -119,3 +119,7 @@ readinessProbe:
   timeoutSeconds: 5
   periodSeconds: 10
   failureThreshold: 2
+
+networkPolicy:
+  enabled: false
+
