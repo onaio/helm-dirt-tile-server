@@ -54,6 +54,10 @@ spec:
               value: {{ $.Values.configs.serverport | quote }}
             - name: FORMS_ENDPOINT
               value: {{ $.Values.configs.formsendpoint }}
+            - name: DATAVIEWS_ENDPOINT
+              value: {{ $.Values.configs.dataviewsendpoint }}
+            - name: MERGED_DATASETS_ENDPOINT
+              value: {{ $.Values.configs.mergeddatasetsendpoint }}
             - name: CORS_ORIGINS
               value: {{ $.Values.configs.corsorigins | quote }}
           imagePullPolicy: {{ $.Values.image.pullPolicy }}
