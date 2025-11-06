@@ -73,7 +73,12 @@ configs:
   tablename: "logger_instance"
   serverport: "3000"
   serverlogger: "true"
+  formsendpoint: "https://api.ona.io/api/v1/forms/"
+  dataviewsendpoint: "https://api.ona.io/api/v1/dataviews/"
+  mergeddatasetsendpoint: "https://api.ona.io/api/v1/merged-datasets/"
   # formsendpoint: "https://<your-onadata-url>/api/v1/forms/"
+  # dataviewsendpoint: "https://<your-onadata-url>/api/v1/dataviews/"
+  # mergeddatasetsendpoint: "https://<your-onadata-url>/api/v1/merged-datasets/"
   # corsorigins: '["https://<your-onadata-url>"]'
 
 pgConnections:
@@ -122,4 +127,3 @@ readinessProbe:
 
 networkPolicy:
   enabled: false
-
