@@ -73,12 +73,16 @@ configs:
   tablename: "logger_instance"
   serverport: "3000"
   serverlogger: "true"
-  # formsendpoint: "https://<your-onadata-url>/api/v1/forms/"
+  onadataurl: "https://api.ona.io"
+  formsendpoint: "/api/v1/forms/"
+  dataviewsendpoint: "/api/v1/dataviews/"
+  mergeddatasetsendpoint: "/api/v1/merged-datasets/"
+  # onadata_domain: "https://<your-onadata-url>"
   # corsorigins: '["https://<your-onadata-url>"]'
 
 pgConnections:
- - secretName: db1
-   secretValue: "test-db-url"
+  - secretName: db1
+    secretValue: "test-db-url"
 
 # We are going to get this from a helm secret
 # Example:
@@ -122,4 +126,3 @@ readinessProbe:
 
 networkPolicy:
   enabled: false
-
