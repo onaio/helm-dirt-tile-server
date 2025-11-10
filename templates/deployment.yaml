@@ -52,6 +52,8 @@ spec:
               value: {{ $.Values.configs.serverlogger | quote }}
             - name: SERVER_PORT
               value: {{ $.Values.configs.serverport | quote }}
+            - name: ONADATA_URL
+              value: {{ $.Values.configs.onadataurl }}
             - name: FORMS_ENDPOINT
               value: {{ $.Values.configs.formsendpoint }}
             - name: DATAVIEWS_ENDPOINT
