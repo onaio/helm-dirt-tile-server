@@ -112,6 +112,43 @@ describe("requests the sidecar answers itself", () => {
         });
     }
 
+    const givenTwice = [
+        ["a dataset id", "form_id=1&form_id=2"],
+        ["a dataset id, apart", "form_id=1&columns=id&form_id=2"],
+        ["a field name", "form_id=1&field_name=status&field_name=age&field_value=approved"],
+        ["a field value", "form_id=1&field_name=status&field_value=approved&field_value=rejected"],
+        ["columns", "form_id=1&columns=id&columns=json"],
+        ["an id column", "form_id=1&id_column=id&id_column=json"],
+        ["a token", "form_id=1&temp_token=first&temp_token=second"],
+        ["nocache", "form_id=1&nocache=1&nocache=2"],
+    ];
+
+    for (const [label, args] of givenTwice) {
+        test(`${label} given twice is a 400 and asks nothing`, async () => {
+            const response = await throughSidecar(`${WORLD}?${args}`);
+
+            assert.equal(response.status, 400);
+            assert.deepEqual(await permissionRequests(), []);
+        });
+    }
+
+    const givenOnce = [
+        ["a value that is another parameter's name", "field_name=form_id&field_value=1"],
+        ["a value that holds a name and a value sign", "field_name=status&field_value=form_id=1"],
+        ["names that end alike", "columns=id&id_column=id"],
+    ];
+
+    for (const [label, args] of givenOnce) {
+        test(`${label} is not taken for a parameter given twice`, async () => {
+            const response = await throughSidecar(
+                `${WORLD}?form_id=1&${args}&temp_token=${newCaller()}`,
+            );
+
+            assert.notEqual(response.status, 400);
+            assert.notDeepEqual(await permissionRequests(), []);
+        });
+    }
+
     test("a refusal can be read by an allowed origin", async () => {
         const response = await throughSidecar(`${WORLD}?form_id=0`, {
             headers: { origin: "https://first.example.test" },

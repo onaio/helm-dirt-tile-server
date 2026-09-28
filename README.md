@@ -12,7 +12,7 @@ Refer to [values.yaml](values.yaml) for configuration options.
 
 Setting `auth.enabled` adds an nginx container to each pod and sends the Service's traffic to it instead of the tile server. For every tile and bounds request the sidecar:
 
-1. refuses the request unless it names exactly one dataset and only parameters the tile server reads;
+1. refuses the request unless it names exactly one dataset and only parameters the tile server reads, each of them once;
 2. asks whether the caller may read the dataset, and remembers the answer for a short time;
 3. serves the response from its cache, or fetches it from the tile server and caches it.
 

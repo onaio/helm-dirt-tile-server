@@ -91,8 +91,8 @@ add_header Vary                         "Origin, Accept-Encoding" always;
 The body of a location whose responses are checked for permission and cached.
 */}}
 {{- define "dirt-tile-server.cachedLocation" -}}
-if ($known_args = 0) {
-  return 400 '{"error":"Unrecognised parameter."}';
+if ($accepted_args = 0) {
+  return 400 '{"error":"Unrecognised or repeated parameter."}';
 }
 if ($auth_backend = "") {
   return 400 '{"error":"Exactly one of form_id, dataview_id or merged_dataset_id is required."}';

@@ -48,9 +48,11 @@ data:
       # A response is cached under the parameters named in its cache key. A
       # parameter this proxy cannot see by name, such as one whose name is
       # percent-encoded, would change the response without changing the key,
-      # so a request carrying one is refused.
-      map $args $known_args {
+      # so a request carrying one is refused. So is one that gives a name
+      # twice, of which this proxy reads the first value only.
+      map $args $accepted_args {
         default 0;
+        "~(?:^|&)([a-z_]+)=.*&\1=" 0;
         "~^(?:form_id|dataview_id|merged_dataset_id|temp_token|field_name|field_value|columns|id_column|limit|nocache)=[^&]*(?:&(?:form_id|dataview_id|merged_dataset_id|temp_token|field_name|field_value|columns|id_column|limit|nocache)=[^&]*)*$" 1;
       }
 
