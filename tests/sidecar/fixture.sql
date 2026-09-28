@@ -1,6 +1,7 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
 
-DROP TABLE IF EXISTS logger_instance, logger_dataview, logger_mergedxform_xforms;
+DROP TABLE IF EXISTS
+    logger_instance, logger_dataview, logger_mergedxform_xforms, logger_xform;
 
 CREATE TABLE logger_instance (
     id integer PRIMARY KEY,
@@ -20,6 +21,20 @@ CREATE TABLE logger_mergedxform_xforms (
     mergedxform_id integer NOT NULL,
     xform_id integer NOT NULL
 );
+CREATE TABLE logger_xform (
+    id integer PRIMARY KEY,
+    json jsonb NOT NULL DEFAULT '{}'
+);
+
+-- A tile server that compares a filter by the type of its field reads the
+-- type from here.
+INSERT INTO logger_xform (id, json) VALUES
+    (1, '{"name": "data", "type": "survey", "children": [
+        {"name": "status", "type": "text"}, {"name": "name", "type": "text"}]}'),
+    (2, '{"name": "data", "type": "survey", "children": [
+        {"name": "status", "type": "text"}, {"name": "name", "type": "text"}]}'),
+    (4, '{"name": "data", "type": "survey", "children": [
+        {"name": "name", "type": "text"}, {"name": "notes", "type": "text"}]}');
 
 INSERT INTO logger_instance (id, xform_id, json, geom) VALUES
     (101, 1, '{"status": "approved", "name": "nairobi"}',
