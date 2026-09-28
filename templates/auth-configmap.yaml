@@ -1,0 +1,151 @@
+{{- if .Values.auth.enabled }}
+{{- $onadataUrl := .Values.auth.onadataUrl | default .Values.configs.onadataurl }}
+{{- if not $onadataUrl }}
+{{- fail "auth.enabled=true requires auth.onadataUrl or configs.onadataurl to be set" }}
+{{- end }}
+{{- $origins := include "dirt-tile-server.allowedOrigins" . | fromJsonArray }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "dirt-tile-server.fullname" . }}-auth
+  labels:
+    {{- include "dirt-tile-server.labels" . | nindent 4 }}
+data:
+  nginx.conf: |
+    worker_processes 1;
+    error_log /dev/stderr warn;
+    pid /tmp/nginx.pid;
+    events { worker_connections 1024; }
+    http {
+      # The token travels in the query string, so requests are logged by
+      # path and dataset, never by their full URL.
+      log_format dataset '$remote_addr [$time_local] "$request_method $uri" '
+                         '$status $body_bytes_sent '
+                         'form=$arg_form_id dataview=$arg_dataview_id '
+                         'merged=$arg_merged_dataset_id '
+                         'cache=$upstream_cache_status time=$request_time';
+      access_log /dev/stdout dataset;
+
+      proxy_temp_path /tmp/proxy;
+      client_body_temp_path /tmp/client_body;
+      fastcgi_temp_path /tmp/fastcgi;
+      uwsgi_temp_path /tmp/uwsgi;
+      scgi_temp_path /tmp/scgi;
+      proxy_cache_path /tmp/auth_cache keys_zone=auth_cache:10m max_size=64m inactive=10m use_temp_path=off;
+      {{- if .Values.auth.tileCache.enabled }}
+      proxy_cache_path /tmp/tiles_cache keys_zone=tiles_cache:{{ .Values.auth.tileCache.keysZoneMb }}m max_size={{ .Values.auth.tileCache.maxSize }} inactive={{ .Values.auth.tileCache.inactive }} use_temp_path=off;
+      {{- end }}
+
+      upstream tiles {
+        server 127.0.0.1:{{ .Values.containerPort }};
+        keepalive 16;
+      }
+
+      # proxy_pass with a variable resolves the hostname at request time,
+      # which needs an explicit resolver.
+      resolver {{ .Values.auth.resolver }} valid={{ .Values.auth.resolverValid }} ipv6=off;
+
+      # A response is cached under the parameters named in its cache key. A
+      # parameter this proxy cannot see by name, such as one whose name is
+      # percent-encoded, would change the response without changing the key,
+      # so a request carrying one is refused.
+      map $args $known_args {
+        default 0;
+        "~^(?:form_id|dataview_id|merged_dataset_id|temp_token|field_name|field_value|columns|id_column|limit|nocache)=[^&]*(?:&(?:form_id|dataview_id|merged_dataset_id|temp_token|field_name|field_value|columns|id_column|limit|nocache)=[^&]*)*$" 1;
+      }
+
+      # Exactly one dataset id, a positive integer without leading zeros, so
+      # that nothing else can reach the path of the permission request.
+      map "$arg_merged_dataset_id|$arg_dataview_id|$arg_form_id" $auth_backend {
+        default "";
+        "~^(?<mid>[1-9][0-9]{0,9})\|\|$"  "{{ $onadataUrl }}{{ .Values.configs.mergeddatasetsendpoint }}$mid.json";
+        "~^\|(?<did>[1-9][0-9]{0,9})\|$"  "{{ $onadataUrl }}{{ .Values.configs.dataviewsendpoint }}$did.json";
+        "~^\|\|(?<fid>[1-9][0-9]{0,9})$"  "{{ $onadataUrl }}{{ .Values.configs.formsendpoint }}$fid.json";
+      }
+
+      map $arg_temp_token $auth_header {
+        default "TempToken $arg_temp_token";
+        ""      "";
+      }
+
+      # Set here and not by the upstream, whose headers would otherwise be
+      # cached with the response and replayed to a caller of another origin.
+      map $http_origin $cors_origin {
+        {{- if has "*" $origins }}
+        default "*";
+        {{- else }}
+        default "";
+        {{- range $origins }}
+        {{ . | quote }} $http_origin;
+        {{- end }}
+        {{- end }}
+      }
+
+      server {
+        listen {{ .Values.auth.port }};
+        server_tokens off;
+        default_type application/json;
+
+        # Both are needed for the upstream keepalive pool to be used.
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        {{- include "dirt-tile-server.corsHeaders" . | nindent 8 }}
+
+        # Answered before the permission request, which a preflight carries
+        # nothing to pass.
+        if ($request_method = OPTIONS) {
+          return 204;
+        }
+
+        location = /health-check {
+          access_log off;
+          proxy_pass http://tiles;
+        }
+
+        # Asks whether the caller may read the dataset. The target and the
+        # header are set by the location that calls this one, where the query
+        # string is still available.
+        location = /_auth {
+          internal;
+          proxy_method HEAD;
+          proxy_pass_request_body off;
+          proxy_set_header Content-Length "";
+          proxy_set_header Authorization $auth_header_resolved;
+          proxy_ssl_server_name on;
+          proxy_ssl_name $auth_host;
+          proxy_set_header Host $auth_host;
+          proxy_pass $auth_target;
+          proxy_cache auth_cache;
+          proxy_cache_key "$auth_target|$auth_header_resolved";
+          proxy_cache_valid 200 {{ .Values.auth.cacheTtlSeconds }}s;
+          proxy_cache_valid 401 403 404 {{ .Values.auth.negativeCacheTtlSeconds }}s;
+          # The tiles of one map view arrive together: the first asks, and
+          # the rest wait for its answer.
+          proxy_cache_lock on;
+          # A dataset the caller may not read is reported upstream as missing,
+          # which auth_request would otherwise turn into a 500.
+          proxy_intercept_errors on;
+          error_page 404 =403 @denied;
+        }
+
+        location @denied {
+          internal;
+          return 403;
+        }
+
+        location ~ "^/v1/mvt/(?:0|[1-9][0-9]?)/(?:0|[1-9][0-9]{0,9})/(?:0|[1-9][0-9]{0,9})$" {
+          {{- include "dirt-tile-server.cachedLocation" . | nindent 10 }}
+        }
+
+        location = /v1/bounds {
+          {{- include "dirt-tile-server.cachedLocation" . | nindent 10 }}
+        }
+
+        location / {
+          return 404 '{"error":"Not found."}';
+        }
+      }
+    }
+{{- end }}

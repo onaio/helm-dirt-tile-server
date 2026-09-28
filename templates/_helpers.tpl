@@ -60,3 +60,75 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+The origins allowed to read responses, as a JSON list, from the same setting
+the application reads.
+*/}}
+{{- define "dirt-tile-server.allowedOrigins" -}}
+{{- $origins := list }}
+{{- range splitList "," (.Values.configs.corsorigins | default "" | toString) }}
+{{- $origin := trim . }}
+{{- if $origin }}
+{{- $origins = append $origins $origin }}
+{{- end }}
+{{- end }}
+{{- $origins | toJson }}
+{{- end }}
+
+{{/*
+nginx repeats none of the headers of an outer block in a block that adds one
+of its own, so every block that adds a header includes these.
+*/}}
+{{- define "dirt-tile-server.corsHeaders" -}}
+add_header Access-Control-Allow-Origin  $cors_origin always;
+add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
+add_header Access-Control-Max-Age       "3600" always;
+add_header Vary                         "Origin, Accept-Encoding" always;
+{{- end }}
+
+{{/*
+The body of a location whose responses are checked for permission and cached.
+*/}}
+{{- define "dirt-tile-server.cachedLocation" -}}
+if ($known_args = 0) {
+  return 400 '{"error":"Unrecognised parameter."}';
+}
+if ($auth_backend = "") {
+  return 400 '{"error":"Exactly one of form_id, dataview_id or merged_dataset_id is required."}';
+}
+set $auth_target $auth_backend;
+set $auth_host   "{{ .Values.auth.onadataHost | default (regexReplaceAll "^https?://" (.Values.auth.onadataUrl | default .Values.configs.onadataurl) "") }}";
+set $auth_header_resolved $auth_header;
+auth_request /_auth;
+{{- if .Values.auth.tileCache.enabled }}
+proxy_cache tiles_cache;
+# Names every parameter that changes the response, and leaves out the token:
+# two callers allowed to read a dataset share its cached responses.
+proxy_cache_key "$uri|$arg_form_id|$arg_dataview_id|$arg_merged_dataset_id|$arg_field_name|$arg_field_value|$arg_columns|$arg_id_column";
+proxy_cache_valid 200 204 {{ .Values.auth.tileCache.ttlSeconds }}s;
+# The upstream marks its responses private and varying, for the browser.
+proxy_ignore_headers Cache-Control Expires Set-Cookie Vary;
+proxy_cache_bypass $arg_nocache;
+proxy_cache_lock on;
+proxy_cache_use_stale updating error timeout;
+proxy_cache_background_update on;
+{{- end }}
+# Stored compressed, once, and decompressed for a caller that cannot take it.
+proxy_set_header Accept-Encoding gzip;
+proxy_set_header Connection "";
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+gunzip on;
+proxy_read_timeout {{ .Values.auth.readTimeoutSeconds }}s;
+proxy_hide_header Access-Control-Allow-Origin;
+proxy_hide_header Access-Control-Allow-Methods;
+proxy_hide_header Access-Control-Allow-Headers;
+proxy_hide_header Access-Control-Max-Age;
+proxy_hide_header Access-Control-Expose-Headers;
+proxy_hide_header Vary;
+{{ include "dirt-tile-server.corsHeaders" . }}
+{{- if .Values.auth.tileCache.enabled }}
+add_header X-Cache-Status $upstream_cache_status always;
+{{- end }}
+proxy_pass http://tiles;
+{{- end }}

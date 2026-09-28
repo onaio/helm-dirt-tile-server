@@ -19,6 +19,9 @@ spec:
         {{- if $.Values.recreatePods }}
         rollme: {{ randAlphaNum 5 | quote }}
         {{- end }}
+        {{- if $.Values.auth.enabled }}
+        checksum/auth-config: {{ include (print $.Template.BasePath "/auth-configmap.yaml") $ | sha256sum }}
+        {{- end }}
         {{- with $.Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -74,6 +77,45 @@ spec:
             {{- toYaml $.Values.readinessProbe | nindent 12 }}
           resources:
             {{- toYaml $.Values.resources | nindent 12 }}
+        {{- if $.Values.auth.enabled }}
+        - name: auth-proxy
+          securityContext:
+            {{- toYaml $.Values.auth.securityContext | nindent 12 }}
+          image: "{{ $.Values.auth.image.repository }}:{{ $.Values.auth.image.tag }}"
+          imagePullPolicy: {{ $.Values.auth.image.pullPolicy }}
+          ports:
+            - name: auth-http
+              containerPort: {{ $.Values.auth.port }}
+              protocol: TCP
+          livenessProbe:
+            tcpSocket:
+              port: auth-http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health-check
+              port: auth-http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml $.Values.auth.resources | nindent 12 }}
+          volumeMounts:
+            - name: auth-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              readOnly: true
+            - name: auth-cache
+              mountPath: /tmp
+        {{- end }}
+      {{- if $.Values.auth.enabled }}
+      volumes:
+        - name: auth-config
+          configMap:
+            name: {{ include "dirt-tile-server.fullname" $ }}-auth
+        - name: auth-cache
+          emptyDir: {}
+      {{- end }}
       {{- with $.Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
