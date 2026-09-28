@@ -1,0 +1,10 @@
+# Values the sidecar is rendered with for the tests in this directory.
+configs:
+  corsorigins: "https://first.example.test,https://second.example.test"
+
+auth:
+  enabled: true
+  onadataUrl: http://permissions:8000
+  # Docker's own DNS server, which knows the other containers by name.
+  resolver: "127.0.0.11"
+  resolverValid: "5s"

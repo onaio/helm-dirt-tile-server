@@ -21,3 +21,5 @@
 .idea/
 *.tmproj
 .vscode/
+# Tests that are run from a checkout. Anchored, to leave templates/tests alone.
+/tests/
