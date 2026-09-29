@@ -19,6 +19,9 @@ spec:
         {{- if $.Values.recreatePods }}
         rollme: {{ randAlphaNum 5 | quote }}
         {{- end }}
+        {{- if $.Values.sidecar.enabled }}
+        checksum/sidecar-config: {{ include (print $.Template.BasePath "/sidecar-configmap.yaml") $ | sha256sum }}
+        {{- end }}
         {{- with $.Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -74,6 +77,47 @@ spec:
             {{- toYaml $.Values.readinessProbe | nindent 12 }}
           resources:
             {{- toYaml $.Values.resources | nindent 12 }}
+        {{- if $.Values.sidecar.enabled }}
+        - name: sidecar
+          securityContext:
+            {{- toYaml $.Values.sidecar.securityContext | nindent 12 }}
+          image: "{{ $.Values.sidecar.image.repository }}:{{ $.Values.sidecar.image.tag }}"
+          imagePullPolicy: {{ $.Values.sidecar.image.pullPolicy }}
+          ports:
+            - name: sidecar-http
+              containerPort: {{ $.Values.sidecar.port }}
+              protocol: TCP
+          livenessProbe:
+            tcpSocket:
+              port: sidecar-http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health-check
+              port: sidecar-http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: {{ $.Values.readinessProbe.timeoutSeconds }}
+          resources:
+            {{- toYaml $.Values.sidecar.resources | nindent 12 }}
+          volumeMounts:
+            - name: sidecar-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              readOnly: true
+            - name: sidecar-cache
+              mountPath: /tmp
+        {{- end }}
+      {{- if $.Values.sidecar.enabled }}
+      volumes:
+        - name: sidecar-config
+          configMap:
+            name: {{ include "dirt-tile-server.fullname" $ }}-sidecar
+        - name: sidecar-cache
+          emptyDir:
+            sizeLimit: {{ $.Values.sidecar.responseCache.volumeSize }}
+      {{- end }}
       {{- with $.Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

@@ -78,7 +78,7 @@ configs:
   dataviewsendpoint: "/api/v1/dataviews/"
   mergeddatasetsendpoint: "/api/v1/merged-datasets/"
   # onadata_domain: "https://<your-onadata-url>"
-  # corsorigins: '["https://<your-onadata-url>"]'
+  # corsorigins: "https://<your-onadata-url>,https://<another>"
 
 pgConnections:
   - secretName: db1
@@ -126,3 +126,80 @@ readinessProbe:
 
 networkPolicy:
   enabled: false
+
+# Optional nginx sidecar in front of the tile server. It asks whether the
+# caller may read the dataset before every response, remembers the answer for
+# a short time, and caches the responses themselves. When enabled, the Service
+# sends traffic to the sidecar instead of the tile server.
+sidecar:
+  enabled: false
+  # Base URL asked whether a caller may read a dataset (no trailing slash).
+  # Defaults to configs.onadataurl. Set it to reach the same service by a
+  # shorter route, such as its in-cluster address.
+  onadataUrl: ""
+  # Host header and TLS server name sent to onadataUrl. Derived from it when
+  # empty. Set it when the address differs from the name on the certificate.
+  onadataHost: ""
+  port: 8080
+  # Seconds an approval is remembered. A change of access takes this long to
+  # show. 0 asks every time.
+  permissionTtlSeconds: 60
+  # Seconds a refusal is remembered.
+  refusalTtlSeconds: 10
+  # Seconds to wait for the tile server to answer.
+  readTimeoutSeconds: 60
+  # Seconds to wait for the service that grants permission. Every request
+  # waits for it, so these are short.
+  permissionConnectTimeoutSeconds: 3
+  permissionReadTimeoutSeconds: 5
+  # Certificates the service that grants permission is checked against.
+  trustedCertificates: /etc/ssl/certs/ca-certificates.crt
+  # Connections one worker may hold. Each request in flight uses up to three.
+  workerConnections: 4096
+  # DNS server used to resolve onadataUrl at request time. It knows no search
+  # domains, so onadataUrl must name its host in full.
+  resolver: "kube-dns.kube-system.svc.cluster.local"
+  resolverValid: "30s"
+  # Responses are cached per dataset and not per caller, and permission is
+  # still asked before every cached response. Add nocache=<anything> to a
+  # request to fetch it afresh and replace what is cached.
+  responseCache:
+    enabled: true
+    # Shared memory for cache keys, in megabytes.
+    keysZoneMb: 50
+    # Most disk the cached responses may take. The volume they are held on
+    # is given room for this and the permission cache beside it.
+    maxSize: "1g"
+    volumeSize: "2Gi"
+    # A response nobody has asked for in this long is dropped.
+    inactive: "24h"
+    # Seconds a response is served before it is fetched again. Changes to the
+    # data take this long to show.
+    ttlSeconds: 10800
+  image:
+    repository: nginx
+    # A patch release of the stable line, named in full so that every pod
+    # runs the same one.
+    tag: "1.30.5-alpine"
+    pullPolicy: IfNotPresent
+  # The configuration keeps nginx's own files under /tmp and its port above
+  # 1024, so it needs none of what it is refused here.
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 101
+    runAsGroup: 101
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
+  # Requests are set because an autoscaler measuring CPU use needs them on
+  # every container of the pod.
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
