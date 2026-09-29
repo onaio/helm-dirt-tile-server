@@ -131,7 +131,7 @@ networkPolicy:
 # caller may read the dataset before every response, remembers the answer for
 # a short time, and caches the responses themselves. When enabled, the Service
 # sends traffic to the sidecar instead of the tile server.
-auth:
+sidecar:
   enabled: false
   # Base URL asked whether a caller may read a dataset (no trailing slash).
   # Defaults to configs.onadataurl. Set it to reach the same service by a
@@ -143,9 +143,9 @@ auth:
   port: 8080
   # Seconds an approval is remembered. A change of access takes this long to
   # show. 0 asks every time.
-  cacheTtlSeconds: 60
+  permissionTtlSeconds: 60
   # Seconds a refusal is remembered.
-  negativeCacheTtlSeconds: 10
+  refusalTtlSeconds: 10
   # Seconds to wait for the tile server to answer.
   readTimeoutSeconds: 60
   # DNS server used to resolve onadataUrl at request time.
@@ -154,7 +154,7 @@ auth:
   # Responses are cached per dataset and not per caller, and permission is
   # still asked before every cached response. Add nocache=<anything> to a
   # request to fetch it afresh and replace what is cached.
-  tileCache:
+  responseCache:
     enabled: true
     # Shared memory for cache keys, in megabytes.
     keysZoneMb: 50

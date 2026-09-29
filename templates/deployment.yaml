@@ -19,8 +19,8 @@ spec:
         {{- if $.Values.recreatePods }}
         rollme: {{ randAlphaNum 5 | quote }}
         {{- end }}
-        {{- if $.Values.auth.enabled }}
-        checksum/auth-config: {{ include (print $.Template.BasePath "/auth-configmap.yaml") $ | sha256sum }}
+        {{- if $.Values.sidecar.enabled }}
+        checksum/sidecar-config: {{ include (print $.Template.BasePath "/sidecar-configmap.yaml") $ | sha256sum }}
         {{- end }}
         {{- with $.Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
@@ -77,43 +77,43 @@ spec:
             {{- toYaml $.Values.readinessProbe | nindent 12 }}
           resources:
             {{- toYaml $.Values.resources | nindent 12 }}
-        {{- if $.Values.auth.enabled }}
-        - name: auth-proxy
+        {{- if $.Values.sidecar.enabled }}
+        - name: sidecar
           securityContext:
-            {{- toYaml $.Values.auth.securityContext | nindent 12 }}
-          image: "{{ $.Values.auth.image.repository }}:{{ $.Values.auth.image.tag }}"
-          imagePullPolicy: {{ $.Values.auth.image.pullPolicy }}
+            {{- toYaml $.Values.sidecar.securityContext | nindent 12 }}
+          image: "{{ $.Values.sidecar.image.repository }}:{{ $.Values.sidecar.image.tag }}"
+          imagePullPolicy: {{ $.Values.sidecar.image.pullPolicy }}
           ports:
-            - name: auth-http
-              containerPort: {{ $.Values.auth.port }}
+            - name: sidecar-http
+              containerPort: {{ $.Values.sidecar.port }}
               protocol: TCP
           livenessProbe:
             tcpSocket:
-              port: auth-http
+              port: sidecar-http
             initialDelaySeconds: 5
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /health-check
-              port: auth-http
+              port: sidecar-http
             initialDelaySeconds: 5
             periodSeconds: 10
           resources:
-            {{- toYaml $.Values.auth.resources | nindent 12 }}
+            {{- toYaml $.Values.sidecar.resources | nindent 12 }}
           volumeMounts:
-            - name: auth-config
+            - name: sidecar-config
               mountPath: /etc/nginx/nginx.conf
               subPath: nginx.conf
               readOnly: true
-            - name: auth-cache
+            - name: sidecar-cache
               mountPath: /tmp
         {{- end }}
-      {{- if $.Values.auth.enabled }}
+      {{- if $.Values.sidecar.enabled }}
       volumes:
-        - name: auth-config
+        - name: sidecar-config
           configMap:
-            name: {{ include "dirt-tile-server.fullname" $ }}-auth
-        - name: auth-cache
+            name: {{ include "dirt-tile-server.fullname" $ }}-sidecar
+        - name: sidecar-cache
           emptyDir: {}
       {{- end }}
       {{- with $.Values.nodeSelector }}

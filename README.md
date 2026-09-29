@@ -10,26 +10,26 @@ Refer to [values.yaml](values.yaml) for configuration options.
 
 ## Caching sidecar
 
-Setting `auth.enabled` adds an nginx container to each pod and sends the Service's traffic to it instead of the tile server. For every tile and bounds request the sidecar:
+Setting `sidecar.enabled` adds an nginx container to each pod and sends the Service's traffic to it instead of the tile server. For every tile and bounds request the sidecar:
 
 1. refuses the request unless it names exactly one dataset and only parameters the tile server reads, each of them once;
 2. asks whether the caller may read the dataset, and remembers the answer for a short time;
 3. serves the response from its cache, or fetches it from the tile server and caches it.
 
 ```yaml
-auth:
+sidecar:
   enabled: true
 ```
 
 | Value | Default | Meaning |
 | --- | --- | --- |
-| `auth.onadataUrl` | `configs.onadataurl` | Where permission is asked. Set it to reach the same service by a shorter route. |
-| `auth.cacheTtlSeconds` | `60` | How long an approval is remembered. A change of access takes this long to show. |
-| `auth.negativeCacheTtlSeconds` | `10` | How long a refusal is remembered. |
-| `auth.tileCache.enabled` | `true` | Whether responses are cached. With `false` the sidecar only checks permission. |
-| `auth.tileCache.ttlSeconds` | `10800` | How long a response is served before it is fetched again. Changes to the data take this long to show. |
-| `auth.tileCache.maxSize` | `1g` | Most disk the cached responses may take, in each pod. |
-| `auth.resources` | requests set | Keep a CPU request here when autoscaling on CPU, which needs one on every container. |
+| `sidecar.onadataUrl` | `configs.onadataurl` | Where permission is asked. Set it to reach the same service by a shorter route. |
+| `sidecar.permissionTtlSeconds` | `60` | How long an approval is remembered. A change of access takes this long to show. |
+| `sidecar.refusalTtlSeconds` | `10` | How long a refusal is remembered. |
+| `sidecar.responseCache.enabled` | `true` | Whether responses are cached. With `false` the sidecar only checks permission. |
+| `sidecar.responseCache.ttlSeconds` | `10800` | How long a response is served before it is fetched again. Changes to the data take this long to show. |
+| `sidecar.responseCache.maxSize` | `1g` | Most disk the cached responses may take, in each pod. |
+| `sidecar.resources` | requests set | Keep a CPU request here when autoscaling on CPU, which needs one on every container. |
 
 ### What to know before enabling it
 

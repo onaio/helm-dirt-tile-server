@@ -62,7 +62,7 @@ describe("requests the sidecar answers itself", () => {
 
     test("the permission request cannot be made from outside", async () => {
         const response = await throughSidecar(
-            `/_auth?form_id=1&temp_token=${newCaller()}`,
+            `/_permission?form_id=1&temp_token=${newCaller()}`,
         );
 
         assert.equal(response.status, 403);

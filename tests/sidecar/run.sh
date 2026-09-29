@@ -28,7 +28,7 @@ cleanup() {
 trap cleanup EXIT
 
 helm template dirt-tile-server "$chart" -f "$here/values.yaml" \
-    --show-only templates/auth-configmap.yaml \
+    --show-only templates/sidecar-configmap.yaml \
     | awk 'found { sub(/^    /, ""); print } /^  nginx.conf: \|/ { found = 1 }' \
     > "$work/nginx.conf"
 

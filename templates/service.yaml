@@ -8,7 +8,7 @@ spec:
   type: {{ .Values.service.type }}
   ports:
     - port: {{ .Values.service.port }}
-      targetPort: {{ if .Values.auth.enabled }}auth-http{{ else }}http{{ end }}
+      targetPort: {{ if .Values.sidecar.enabled }}sidecar-http{{ else }}http{{ end }}
       protocol: TCP
       name: http
   selector:

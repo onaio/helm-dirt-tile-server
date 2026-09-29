@@ -2,7 +2,7 @@
 configs:
   corsorigins: "https://first.example.test,https://second.example.test"
 
-auth:
+sidecar:
   enabled: true
   onadataUrl: http://permissions:8000
   # Docker's own DNS server, which knows the other containers by name.

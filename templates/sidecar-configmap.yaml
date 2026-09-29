@@ -1,13 +1,13 @@
-{{- if .Values.auth.enabled }}
-{{- $onadataUrl := .Values.auth.onadataUrl | default .Values.configs.onadataurl }}
+{{- if .Values.sidecar.enabled }}
+{{- $onadataUrl := .Values.sidecar.onadataUrl | default .Values.configs.onadataurl }}
 {{- if not $onadataUrl }}
-{{- fail "auth.enabled=true requires auth.onadataUrl or configs.onadataurl to be set" }}
+{{- fail "sidecar.enabled=true requires sidecar.onadataUrl or configs.onadataurl to be set" }}
 {{- end }}
 {{- $origins := include "dirt-tile-server.allowedOrigins" . | fromJsonArray }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "dirt-tile-server.fullname" . }}-auth
+  name: {{ include "dirt-tile-server.fullname" . }}-sidecar
   labels:
     {{- include "dirt-tile-server.labels" . | nindent 4 }}
 data:
@@ -31,9 +31,9 @@ data:
       fastcgi_temp_path /tmp/fastcgi;
       uwsgi_temp_path /tmp/uwsgi;
       scgi_temp_path /tmp/scgi;
-      proxy_cache_path /tmp/auth_cache keys_zone=auth_cache:10m max_size=64m inactive=10m use_temp_path=off;
-      {{- if .Values.auth.tileCache.enabled }}
-      proxy_cache_path /tmp/tiles_cache keys_zone=tiles_cache:{{ .Values.auth.tileCache.keysZoneMb }}m max_size={{ .Values.auth.tileCache.maxSize }} inactive={{ .Values.auth.tileCache.inactive }} use_temp_path=off;
+      proxy_cache_path /tmp/permission_cache keys_zone=permission_cache:10m max_size=64m inactive=10m use_temp_path=off;
+      {{- if .Values.sidecar.responseCache.enabled }}
+      proxy_cache_path /tmp/response_cache keys_zone=response_cache:{{ .Values.sidecar.responseCache.keysZoneMb }}m max_size={{ .Values.sidecar.responseCache.maxSize }} inactive={{ .Values.sidecar.responseCache.inactive }} use_temp_path=off;
       {{- end }}
 
       upstream tiles {
@@ -43,7 +43,7 @@ data:
 
       # proxy_pass with a variable resolves the hostname at request time,
       # which needs an explicit resolver.
-      resolver {{ .Values.auth.resolver }} valid={{ .Values.auth.resolverValid }} ipv6=off;
+      resolver {{ .Values.sidecar.resolver }} valid={{ .Values.sidecar.resolverValid }} ipv6=off;
 
       # A response is cached under the parameters named in its cache key. A
       # parameter this proxy cannot see by name, such as one whose name is
@@ -58,14 +58,14 @@ data:
 
       # Exactly one dataset id, a positive integer without leading zeros, so
       # that nothing else can reach the path of the permission request.
-      map "$arg_merged_dataset_id|$arg_dataview_id|$arg_form_id" $auth_backend {
+      map "$arg_merged_dataset_id|$arg_dataview_id|$arg_form_id" $permission_url {
         default "";
         "~^(?<mid>[1-9][0-9]{0,9})\|\|$"  "{{ $onadataUrl }}{{ .Values.configs.mergeddatasetsendpoint }}$mid.json";
         "~^\|(?<did>[1-9][0-9]{0,9})\|$"  "{{ $onadataUrl }}{{ .Values.configs.dataviewsendpoint }}$did.json";
         "~^\|\|(?<fid>[1-9][0-9]{0,9})$"  "{{ $onadataUrl }}{{ .Values.configs.formsendpoint }}$fid.json";
       }
 
-      map $arg_temp_token $auth_header {
+      map $arg_temp_token $permission_header {
         default "TempToken $arg_temp_token";
         ""      "";
       }
@@ -84,7 +84,7 @@ data:
       }
 
       server {
-        listen {{ .Values.auth.port }};
+        listen {{ .Values.sidecar.port }};
         server_tokens off;
         default_type application/json;
 
@@ -110,20 +110,20 @@ data:
         # Asks whether the caller may read the dataset. The target and the
         # header are set by the location that calls this one, where the query
         # string is still available.
-        location = /_auth {
+        location = /_permission {
           internal;
           proxy_method HEAD;
           proxy_pass_request_body off;
           proxy_set_header Content-Length "";
-          proxy_set_header Authorization $auth_header_resolved;
+          proxy_set_header Authorization $permission_header_sent;
           proxy_ssl_server_name on;
-          proxy_ssl_name $auth_host;
-          proxy_set_header Host $auth_host;
-          proxy_pass $auth_target;
-          proxy_cache auth_cache;
-          proxy_cache_key "$auth_target|$auth_header_resolved";
-          proxy_cache_valid 200 {{ .Values.auth.cacheTtlSeconds }}s;
-          proxy_cache_valid 401 403 404 {{ .Values.auth.negativeCacheTtlSeconds }}s;
+          proxy_ssl_name $permission_host;
+          proxy_set_header Host $permission_host;
+          proxy_pass $permission_target;
+          proxy_cache permission_cache;
+          proxy_cache_key "$permission_target|$permission_header_sent";
+          proxy_cache_valid 200 {{ .Values.sidecar.permissionTtlSeconds }}s;
+          proxy_cache_valid 401 403 404 {{ .Values.sidecar.refusalTtlSeconds }}s;
           # The tiles of one map view arrive together: the first asks, and
           # the rest wait for its answer.
           proxy_cache_lock on;
