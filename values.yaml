@@ -166,8 +166,10 @@ sidecar:
     enabled: true
     # Shared memory for cache keys, in megabytes.
     keysZoneMb: 50
-    # Most disk the cached responses may take.
+    # Most disk the cached responses may take. The volume they are held on
+    # is given room for this and the permission cache beside it.
     maxSize: "1g"
+    volumeSize: "2Gi"
     # A response nobody has asked for in this long is dropped.
     inactive: "24h"
     # Seconds a response is served before it is fetched again. Changes to the
@@ -177,7 +179,19 @@ sidecar:
     repository: nginx
     tag: "1.27-alpine"
     pullPolicy: IfNotPresent
-  securityContext: {}
+  # The configuration keeps nginx's own files under /tmp and its port above
+  # 1024, so it needs none of what it is refused here.
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 101
+    runAsGroup: 101
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
   # Requests are set because an autoscaler measuring CPU use needs them on
   # every container of the pod.
   resources:

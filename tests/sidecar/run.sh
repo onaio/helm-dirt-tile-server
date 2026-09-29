@@ -78,7 +78,11 @@ docker run -d --name "$prefix-tiles" --network "$network" \
     -e SERVER_LOGGER=true \
     "$TILE_SERVER_IMAGE" >/dev/null
 
+# Run as the chart runs it: an unprivileged user, nothing writable but the
+# volume its caches live on.
 docker run -d --name "$prefix-proxy" --network "container:$prefix-tiles" \
+    --user 101:101 --read-only --tmpfs /tmp:uid=101,gid=101 \
+    --cap-drop ALL --security-opt no-new-privileges \
     -v "$work/nginx.conf:/etc/nginx/nginx.conf:ro" \
     "$NGINX_IMAGE" >/dev/null
 

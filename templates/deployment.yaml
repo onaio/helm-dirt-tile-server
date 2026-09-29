@@ -98,6 +98,7 @@ spec:
               port: sidecar-http
             initialDelaySeconds: 5
             periodSeconds: 10
+            timeoutSeconds: {{ $.Values.readinessProbe.timeoutSeconds }}
           resources:
             {{- toYaml $.Values.sidecar.resources | nindent 12 }}
           volumeMounts:
@@ -114,7 +115,8 @@ spec:
           configMap:
             name: {{ include "dirt-tile-server.fullname" $ }}-sidecar
         - name: sidecar-cache
-          emptyDir: {}
+          emptyDir:
+            sizeLimit: {{ $.Values.sidecar.responseCache.volumeSize }}
       {{- end }}
       {{- with $.Values.nodeSelector }}
       nodeSelector:
