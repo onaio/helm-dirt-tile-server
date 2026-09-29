@@ -16,6 +16,13 @@ const WORLD = "/v1/mvt/0/0/0";
 const askedBySidecar = async () =>
     (await permissionRequests()).filter(({ method }) => method === "HEAD");
 
+const asAsked = async () =>
+    (await askedBySidecar()).map(({ method, url, authorization }) => ({
+        method,
+        url,
+        authorization,
+    }));
+
 describe("permission", () => {
     beforeEach(forgetPermissionRequests);
 
@@ -34,7 +41,7 @@ describe("permission", () => {
             );
 
             assert.equal(response.status, 200);
-            assert.deepEqual(await askedBySidecar(), [
+            assert.deepEqual(await asAsked(), [
                 {
                     method: "HEAD",
                     url: asked,
@@ -48,8 +55,12 @@ describe("permission", () => {
         const response = await throughSidecar(`${WORLD}?form_id=3`);
 
         assert.equal(response.status, 204);
-        assert.deepEqual(await askedBySidecar(), [
-            { method: "HEAD", url: "/api/v1/forms/3.json" },
+        assert.deepEqual(await asAsked(), [
+            {
+                method: "HEAD",
+                url: "/api/v1/forms/3.json",
+                authorization: undefined,
+            },
         ]);
     });
 
@@ -156,6 +167,60 @@ describe("permission", () => {
             responses.map(({ status }) => status),
             Array.from({ length: 8 }, () => 204),
         );
+        assert.equal((await askedBySidecar()).length, 1);
+    });
+
+    const carried = [
+        ["a cookie", { cookie: "sessionid=signed-in" }],
+        ["an authorization header of its own", { authorization: "Basic abc" }],
+        ["a forwarded address", { "x-forwarded-for": "10.0.0.1" }],
+        ["an accepted encoding", { "accept-encoding": "gzip" }],
+        ["a name of its own", { "x-caller": "somebody" }],
+    ];
+
+    for (const [label, headers] of carried) {
+        test(`${label} does not reach the service that grants permission`, async () => {
+            await throughSidecar(
+                `${unusedEmptyTile()}?form_id=1&temp_token=${newCaller()}`,
+                { headers },
+            );
+
+            const [asked] = await askedBySidecar();
+            assert.deepEqual(Object.keys(asked.headers).sort(), [
+                "authorization",
+                "connection",
+                "host",
+            ]);
+        });
+    }
+
+    // A dataset of its own, so that no answer remembered for another
+    // caller can decide this one.
+    test("a caller carrying only a cookie is refused", async () => {
+        const response = await throughSidecar(`${WORLD}?form_id=97`, {
+            headers: { cookie: "sessionid=signed-in" },
+        });
+
+        assert.equal(response.status, 403);
+    });
+
+    test("a cookie approved upstream does not let the next caller in", async () => {
+        const tile = unusedEmptyTile();
+        await throughSidecar(`${tile}?form_id=98`, {
+            headers: { cookie: "sessionid=signed-in" },
+        });
+
+        const next = await throughSidecar(`${tile}?form_id=98`);
+
+        assert.equal(next.status, 403);
+    });
+
+    test("an approval is remembered however the upstream says to cache it", async () => {
+        const caller = newCaller("allow-nostore");
+
+        await throughSidecar(`${unusedEmptyTile()}?form_id=1&temp_token=${caller}`);
+        await throughSidecar(`${unusedEmptyTile()}?form_id=1&temp_token=${caller}`);
+
         assert.equal((await askedBySidecar()).length, 1);
     });
 

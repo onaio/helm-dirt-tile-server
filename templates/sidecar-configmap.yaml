@@ -12,10 +12,10 @@ metadata:
     {{- include "dirt-tile-server.labels" . | nindent 4 }}
 data:
   nginx.conf: |
-    worker_processes 1;
+    worker_processes auto;
     error_log /dev/stderr warn;
     pid /tmp/nginx.pid;
-    events { worker_connections 1024; }
+    events { worker_connections {{ .Values.sidecar.workerConnections }}; }
     http {
       # The token travels in the query string, so requests are logged by
       # path and dataset, never by their full URL.
@@ -114,16 +114,28 @@ data:
           internal;
           proxy_method HEAD;
           proxy_pass_request_body off;
+          # The caller's own headers are left behind: a cookie among them
+          # could win an approval that is then kept under the token alone.
+          proxy_pass_request_headers off;
           proxy_set_header Content-Length "";
           proxy_set_header Authorization $permission_header_sent;
           proxy_ssl_server_name on;
           proxy_ssl_name $permission_host;
+          proxy_ssl_verify on;
+          proxy_ssl_trusted_certificate {{ .Values.sidecar.trustedCertificates }};
+          proxy_ssl_verify_depth 3;
           proxy_set_header Host $permission_host;
+          proxy_connect_timeout {{ .Values.sidecar.permissionConnectTimeoutSeconds }}s;
+          proxy_send_timeout {{ .Values.sidecar.permissionReadTimeoutSeconds }}s;
+          proxy_read_timeout {{ .Values.sidecar.permissionReadTimeoutSeconds }}s;
           proxy_pass $permission_target;
           proxy_cache permission_cache;
           proxy_cache_key "$permission_target|$permission_header_sent";
           proxy_cache_valid 200 {{ .Values.sidecar.permissionTtlSeconds }}s;
           proxy_cache_valid 401 403 404 {{ .Values.sidecar.refusalTtlSeconds }}s;
+          # How long an answer is kept is settled here, not by the service
+          # that gives it.
+          proxy_ignore_headers Cache-Control Expires X-Accel-Expires X-Accel-Redirect Set-Cookie Vary;
           # The tiles of one map view arrive together: the first asks, and
           # the rest wait for its answer.
           proxy_cache_lock on;

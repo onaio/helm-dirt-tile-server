@@ -148,6 +148,14 @@ sidecar:
   refusalTtlSeconds: 10
   # Seconds to wait for the tile server to answer.
   readTimeoutSeconds: 60
+  # Seconds to wait for the service that grants permission. Every request
+  # waits for it, so these are short.
+  permissionConnectTimeoutSeconds: 3
+  permissionReadTimeoutSeconds: 5
+  # Certificates the service that grants permission is checked against.
+  trustedCertificates: /etc/ssl/certs/ca-certificates.crt
+  # Connections one worker may hold. Each request in flight uses up to three.
+  workerConnections: 4096
   # DNS server used to resolve onadataUrl at request time.
   resolver: "kube-dns.kube-system.svc.cluster.local"
   resolverValid: "30s"
