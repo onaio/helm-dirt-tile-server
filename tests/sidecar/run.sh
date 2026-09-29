@@ -11,7 +11,7 @@ chart="$(cd "$here/../.." && pwd)"
 
 TILE_SERVER_IMAGE="${TILE_SERVER_IMAGE:-onaio/dirt-tile-server:latest}"
 POSTGIS_IMAGE="${POSTGIS_IMAGE:-postgis/postgis:16-3.4}"
-NGINX_IMAGE="${NGINX_IMAGE:-nginx:1.27-alpine}"
+NGINX_IMAGE="${NGINX_IMAGE:-nginx:1.30.5-alpine}"
 SIDECAR_PORT="${SIDECAR_PORT:-58080}"
 TILE_SERVER_PORT="${TILE_SERVER_PORT:-53000}"
 PERMISSIONS_PORT="${PERMISSIONS_PORT:-58000}"

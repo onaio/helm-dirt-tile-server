@@ -178,7 +178,9 @@ sidecar:
     ttlSeconds: 10800
   image:
     repository: nginx
-    tag: "1.27-alpine"
+    # A patch release of the stable line, named in full so that every pod
+    # runs the same one.
+    tag: "1.30.5-alpine"
     pullPolicy: IfNotPresent
   # The configuration keeps nginx's own files under /tmp and its port above
   # 1024, so it needs none of what it is refused here.

@@ -178,19 +178,27 @@ describe("permission", () => {
         ["a name of its own", { "x-caller": "somebody" }],
     ];
 
+    // Whatever else nginx adds of its own, nothing of the caller's may be
+    // among them.
+    const SET_BY_THE_SIDECAR = ["authorization", "connection", "host"];
+
     for (const [label, headers] of carried) {
         test(`${label} does not reach the service that grants permission`, async () => {
+            const caller = newCaller();
+
             await throughSidecar(
-                `${unusedEmptyTile()}?form_id=1&temp_token=${newCaller()}`,
+                `${unusedEmptyTile()}?form_id=1&temp_token=${caller}`,
                 { headers },
             );
 
             const [asked] = await askedBySidecar();
-            assert.deepEqual(Object.keys(asked.headers).sort(), [
-                "authorization",
-                "connection",
-                "host",
-            ]);
+            assert.deepEqual(
+                Object.keys(asked.headers).filter(
+                    (name) => !SET_BY_THE_SIDECAR.includes(name),
+                ),
+                [],
+            );
+            assert.equal(asked.authorization, `TempToken ${caller}`);
         });
     }
 
