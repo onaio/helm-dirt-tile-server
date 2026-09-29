@@ -97,6 +97,8 @@ proxy_hide_header Access-Control-Allow-Methods;
 proxy_hide_header Access-Control-Allow-Headers;
 proxy_hide_header Access-Control-Max-Age;
 proxy_hide_header Access-Control-Expose-Headers;
+proxy_hide_header Access-Control-Allow-Credentials;
+proxy_hide_header Set-Cookie;
 proxy_hide_header Vary;
 {{ include "dirt-tile-server.corsHeaders" . }}
 {{- end }}
@@ -118,11 +120,12 @@ auth_request /_permission;
 {{- if .Values.sidecar.responseCache.enabled }}
 proxy_cache response_cache;
 # Names every parameter that changes the response, and leaves out the token:
-# two callers allowed to read a dataset share its cached responses.
-proxy_cache_key "$uri|$arg_form_id|$arg_dataview_id|$arg_merged_dataset_id|$arg_field_name|$arg_field_value|$arg_columns|$arg_id_column";
+# two callers allowed to read a dataset share its cached responses. Parts
+# are separated by &, which no parameter's value can hold.
+proxy_cache_key "$uri?form_id=$arg_form_id&dataview_id=$arg_dataview_id&merged_dataset_id=$arg_merged_dataset_id&field_name=$arg_field_name&field_value=$arg_field_value&columns=$arg_columns&id_column=$arg_id_column&limit=$arg_limit";
 proxy_cache_valid 200 204 {{ .Values.sidecar.responseCache.ttlSeconds }}s;
-# The upstream marks its responses private and varying, for the browser.
-proxy_ignore_headers Cache-Control Expires Set-Cookie Vary;
+# The tile server marks its responses private and varying, for the browser.
+proxy_ignore_headers Cache-Control Expires X-Accel-Expires X-Accel-Redirect Set-Cookie Vary;
 proxy_cache_bypass $arg_nocache;
 proxy_cache_lock on;
 proxy_cache_use_stale updating error timeout;

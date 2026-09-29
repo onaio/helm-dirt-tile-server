@@ -108,9 +108,16 @@ describe("cached responses", () => {
         );
         const anonymous = await throughSidecar(`${GUARDED}?form_id=1`);
 
+        assert.ok(
+            contentOf(stored[1]).includes("nairobi"),
+            "the cached tile does not name what the refused ones must not",
+        );
         assert.deepEqual([refused.status, anonymous.status], [403, 403]);
         assert.deepEqual(
-            [refused.body.includes("nairobi"), anonymous.body.includes("nairobi")],
+            [
+                contentOf(refused).includes("nairobi"),
+                contentOf(anonymous).includes("nairobi"),
+            ],
             [false, false],
         );
     });
@@ -153,6 +160,10 @@ describe("cached responses", () => {
         ["another field name", "form_id=1&field_name=name&field_value=approved"],
         ["an id column", "form_id=1&id_column=id"],
         ["extra columns", "form_id=1&columns=id"],
+        ["a field name that holds the separator", "form_id=1&field_name=status|x&field_value=approved"],
+        ["a field value that holds the separator", "form_id=1&field_name=status&field_value=x|approved"],
+        ["an empty field value", "form_id=1&field_name=status&field_value="],
+        ["a row limit", "form_id=1&limit=1"],
     ];
 
     for (const [label, args] of variants) {
@@ -214,14 +225,17 @@ describe("cached responses", () => {
     test("nocache fetches afresh and replaces what is cached", async () => {
         const caller = newCaller();
         const path = `${REFRESHED}?form_id=1&temp_token=${caller}`;
-        await twice(path);
+        const [, stored] = await twice(path);
 
         const refreshed = await throughSidecar(`${path}&nocache=1`);
         const after = await throughSidecar(path);
 
+        assert.equal(stored.cache, "HIT");
         assert.equal(refreshed.cache, "BYPASS");
         assert.equal(refreshed.status, 200);
         assert.equal(after.cache, "HIT");
+        assert.deepEqual(contentOf(after), contentOf(refreshed));
+        assert.ok(contentOf(after).length > 0, "the tile came back empty");
     });
 
     test("the tile server compresses a tile of this size", async () => {
@@ -313,13 +327,15 @@ describe("cross-origin headers", () => {
 });
 
 describe("the sidecar's log", () => {
+    // A tile of its own, so that the line found is this request's.
     test("records a request without the caller's token", async () => {
         const caller = newCaller();
-        await throughSidecar(`${REGION}?form_id=1&temp_token=${caller}`);
+        const tile = unusedEmptyTile();
 
+        await throughSidecar(`${tile}?form_id=1&temp_token=${caller}`);
         const log = proxyLog();
 
-        assert.match(log, /"GET \/v1\/mvt\/5\/19\/16" 200 .*form=1/);
+        assert.match(log, new RegExp(`"GET ${tile}" 204 .*form=1`));
         assert.equal(log.includes(caller), false);
     });
 });
