@@ -8,6 +8,53 @@ Refer to [values.yaml](values.yaml) for configuration options.
 
 **Note** `configs` values default to work best with onadata
 
+## The database login
+
+The tile server only ever reads, and only four tables. Give it a login of its own
+rather than the one onadata uses. In `psql`, as a superuser on the onadata
+database:
+
+```sql
+CREATE ROLE tiles_reader LOGIN PASSWORD 'choose-a-long-random-one';
+
+GRANT CONNECT ON DATABASE onadata TO tiles_reader;
+GRANT USAGE ON SCHEMA public TO tiles_reader;
+GRANT SELECT ON
+    logger_instance, logger_dataview, logger_mergedxform_xforms, logger_xform
+TO tiles_reader;
+
+ALTER ROLE tiles_reader SET default_transaction_read_only = on;
+ALTER ROLE tiles_reader CONNECTION LIMIT 20;
+```
+
+Name the database as it is called, and set the connection limit to the pool size
+(`POSTGRES_POOL_MAX`, 10 by default) times the number of pods, with room to
+spare.
+
+Then give the chart that username and password as the connection string:
+
+```yaml
+pgConnections:
+  - secretName: dirt-tile-server-db
+    secretValue: "postgres://tiles_reader:choose-a-long-random-one@<host>:5432/onadata"
+```
+
+The chart puts it in a Secret the container reads as `POSTGRES_CONNECTION`. Keep
+it out of `values.yaml` in a repository: use a secrets file, or create the Secret
+yourself and set `pgconnectionUseExistingSecret: true` with the name above.
+
+Check the login has no more than it needs:
+
+```sql
+SELECT table_name, privilege_type
+FROM information_schema.table_privileges
+WHERE grantee = 'tiles_reader';
+```
+
+Four rows, all `SELECT`. `GRANT SELECT` on a partitioned table covers reads
+through it, and new partitions as they appear, without letting the login read a
+partition by name.
+
 ## Caching sidecar
 
 Setting `sidecar.enabled` adds an nginx container to each pod and sends the Service's traffic to it instead of the tile server. For every tile and bounds request the sidecar:
