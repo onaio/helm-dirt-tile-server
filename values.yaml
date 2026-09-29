@@ -78,7 +78,7 @@ configs:
   dataviewsendpoint: "/api/v1/dataviews/"
   mergeddatasetsendpoint: "/api/v1/merged-datasets/"
   # onadata_domain: "https://<your-onadata-url>"
-  # corsorigins: '["https://<your-onadata-url>"]'
+  # corsorigins: "https://<your-onadata-url>,https://<another>"
 
 pgConnections:
   - secretName: db1
@@ -156,7 +156,8 @@ sidecar:
   trustedCertificates: /etc/ssl/certs/ca-certificates.crt
   # Connections one worker may hold. Each request in flight uses up to three.
   workerConnections: 4096
-  # DNS server used to resolve onadataUrl at request time.
+  # DNS server used to resolve onadataUrl at request time. It knows no search
+  # domains, so onadataUrl must name its host in full.
   resolver: "kube-dns.kube-system.svc.cluster.local"
   resolverValid: "30s"
   # Responses are cached per dataset and not per caller, and permission is

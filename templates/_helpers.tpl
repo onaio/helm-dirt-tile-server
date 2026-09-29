@@ -66,6 +66,9 @@ The origins allowed to read responses, as a JSON list, from the same setting
 the application reads.
 */}}
 {{- define "dirt-tile-server.allowedOrigins" -}}
+{{- if regexMatch "[][]" (.Values.configs.corsorigins | default "" | toString) }}
+{{- fail (printf "configs.corsorigins is a comma-separated list, not a JSON one: %q" .Values.configs.corsorigins) }}
+{{- end }}
 {{- $origins := list }}
 {{- range splitList "," (.Values.configs.corsorigins | default "" | toString) }}
 {{- $origin := trim . }}

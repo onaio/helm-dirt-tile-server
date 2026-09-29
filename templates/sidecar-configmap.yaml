@@ -3,6 +3,12 @@
 {{- if not $onadataUrl }}
 {{- fail "sidecar.enabled=true requires sidecar.onadataUrl or configs.onadataurl to be set" }}
 {{- end }}
+{{- if not (regexMatch "^https?://[A-Za-z0-9._-]+(:[0-9]+)?$" $onadataUrl) }}
+{{- fail (printf "the address permission is asked at must be http:// or https:// followed by a host and nothing more, not %q" $onadataUrl) }}
+{{- end }}
+{{- if not (regexMatch "^[A-Za-z0-9._-]+$" (.Values.sidecar.resolver | toString)) }}
+{{- fail (printf "sidecar.resolver must be an address or a name the cluster resolves in full, not %q" .Values.sidecar.resolver) }}
+{{- end }}
 {{- $origins := include "dirt-tile-server.allowedOrigins" . | fromJsonArray }}
 apiVersion: v1
 kind: ConfigMap
