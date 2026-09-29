@@ -103,6 +103,7 @@ data:
 
         location = /health-check {
           access_log off;
+          {{- include "dirt-tile-server.corsHeadersOfOurOwn" . | nindent 10 }}
           proxy_pass http://tiles;
         }
 

@@ -88,6 +88,20 @@ add_header Vary                         "Origin, Accept-Encoding" always;
 {{- end }}
 
 {{/*
+For a location that passes a request on: the tile server's own headers are
+dropped, or the caller would be given each of them twice.
+*/}}
+{{- define "dirt-tile-server.corsHeadersOfOurOwn" -}}
+proxy_hide_header Access-Control-Allow-Origin;
+proxy_hide_header Access-Control-Allow-Methods;
+proxy_hide_header Access-Control-Allow-Headers;
+proxy_hide_header Access-Control-Max-Age;
+proxy_hide_header Access-Control-Expose-Headers;
+proxy_hide_header Vary;
+{{ include "dirt-tile-server.corsHeaders" . }}
+{{- end }}
+
+{{/*
 The body of a location whose responses are checked for permission and cached.
 */}}
 {{- define "dirt-tile-server.cachedLocation" -}}
@@ -120,13 +134,7 @@ proxy_set_header Connection "";
 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 gunzip on;
 proxy_read_timeout {{ .Values.auth.readTimeoutSeconds }}s;
-proxy_hide_header Access-Control-Allow-Origin;
-proxy_hide_header Access-Control-Allow-Methods;
-proxy_hide_header Access-Control-Allow-Headers;
-proxy_hide_header Access-Control-Max-Age;
-proxy_hide_header Access-Control-Expose-Headers;
-proxy_hide_header Vary;
-{{ include "dirt-tile-server.corsHeaders" . }}
+{{ include "dirt-tile-server.corsHeadersOfOurOwn" . }}
 {{- if .Values.auth.tileCache.enabled }}
 add_header X-Cache-Status $upstream_cache_status always;
 {{- end }}

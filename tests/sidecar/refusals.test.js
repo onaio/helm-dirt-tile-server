@@ -2,6 +2,7 @@ const { describe, test, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
+    ALLOWED_ORIGIN,
     throughSidecar,
     permissionRequests,
     forgetPermissionRequests,
@@ -19,6 +20,18 @@ describe("requests the sidecar answers itself", () => {
         assert.equal(response.status, 200);
         assert.equal(response.body.toString(), "healthy");
         assert.deepEqual(await permissionRequests(), []);
+    });
+
+    test("the health check names an allowed origin once", async () => {
+        const response = await throughSidecar("/health-check", {
+            headers: { origin: ALLOWED_ORIGIN },
+        });
+
+        assert.equal(response.status, 200);
+        assert.equal(
+            response.headers["access-control-allow-origin"],
+            ALLOWED_ORIGIN,
+        );
     });
 
     for (const path of [
