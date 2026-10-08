@@ -47,6 +47,8 @@ spec:
                   name: {{ .secretName }}
                   key: pgconnection
                   optional: false
+            - name: POSTGRES_STATEMENT_TIMEOUT
+              value: {{ $.Values.configs.statementtimeout | quote }}
             - name: TABLE_COLUMN
               value: {{ $.Values.configs.tablecolumn }}
             - name: TABLE_NAME

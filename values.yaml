@@ -77,6 +77,8 @@ configs:
   formsendpoint: "/api/v1/forms/"
   dataviewsendpoint: "/api/v1/dataviews/"
   mergeddatasetsendpoint: "/api/v1/merged-datasets/"
+  # See README, "The database login".
+  statementtimeout: "0"
   # onadata_domain: "https://<your-onadata-url>"
   # corsorigins: "https://<your-onadata-url>,https://<another>"
 

@@ -11,7 +11,7 @@ Refer to [values.yaml](values.yaml) for configuration options.
 ## The database login
 
 The tile server only ever reads, and only four tables. Give it a login of its own
-rather than the one onadata uses. In `psql`, as a superuser on the onadata
+rather than the one OnaData uses. In `psql`, as a superuser on the onadata
 database:
 
 ```sql
@@ -24,12 +24,18 @@ GRANT SELECT ON
 TO tiles_reader;
 
 ALTER ROLE tiles_reader SET default_transaction_read_only = on;
+ALTER ROLE tiles_reader SET statement_timeout = '60s';
 ALTER ROLE tiles_reader CONNECTION LIMIT 20;
 ```
 
 Name the database as it is called, and set the connection limit to the pool size
 (`POSTGRES_POOL_MAX`, 10 by default) times the number of pods, with room to
 spare.
+
+Set the statement timeout on the role rather than leaving it to the tile server:
+the connection string points at a pooler in transaction mode, which rejects the
+startup parameter the server would otherwise send. `configs.statementtimeout`
+is `0` for that reason, and sets `POSTGRES_STATEMENT_TIMEOUT` in the container.
 
 Then give the chart that username and password as the connection string:
 
@@ -68,20 +74,20 @@ sidecar:
   enabled: true
 ```
 
-| Value | Default | Meaning |
-| --- | --- | --- |
-| `sidecar.onadataUrl` | `configs.onadataurl` | Where permission is asked: a scheme, a host and nothing else. The sidecar's resolver knows no search domains, so an in-cluster address must be given in full, as `onadata.onadata.svc.cluster.local`. |
-| `sidecar.permissionConnectTimeoutSeconds` | `3` | How long to wait to reach the service that grants permission. |
-| `sidecar.permissionReadTimeoutSeconds` | `5` | How long to wait for its answer. Every request waits for one, so this bounds how long the sidecar holds a request when that service is unwell. |
-| `sidecar.permissionTtlSeconds` | `60` | How long an approval is remembered. A change of access takes this long to show. |
-| `sidecar.refusalTtlSeconds` | `10` | How long a refusal is remembered. |
-| `sidecar.responseCache.enabled` | `true` | Whether responses are cached. With `false` the sidecar only checks permission. |
-| `sidecar.responseCache.ttlSeconds` | `10800` | How long a response is served before it is fetched again. Changes to the data take this long to show. |
-| `sidecar.responseCache.maxSize` | `1g` | Most disk the cached responses may take, in each pod. |
-| `sidecar.responseCache.volumeSize` | `2Gi` | Room for the cached responses and the remembered answers beside them. |
-| `sidecar.workerConnections` | `4096` | Connections one worker may hold. A request in flight uses up to three. |
-| `sidecar.resources` | requests set | Keep a CPU request here when autoscaling on CPU, which needs one on every container. |
-| `sidecar.securityContext` | unprivileged | The sidecar runs as user 101 with a read-only root filesystem and no capabilities. |
+| Value                                     | Default              | Meaning                                                                                                                                                                                               |
+| ----------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sidecar.onadataUrl`                      | `configs.onadataurl` | Where permission is asked: a scheme, a host and nothing else. The sidecar's resolver knows no search domains, so an in-cluster address must be given in full, as `onadata.onadata.svc.cluster.local`. |
+| `sidecar.permissionConnectTimeoutSeconds` | `3`                  | How long to wait to reach the service that grants permission.                                                                                                                                         |
+| `sidecar.permissionReadTimeoutSeconds`    | `5`                  | How long to wait for its answer. Every request waits for one, so this bounds how long the sidecar holds a request when that service is unwell.                                                        |
+| `sidecar.permissionTtlSeconds`            | `60`                 | How long an approval is remembered. A change of access takes this long to show.                                                                                                                       |
+| `sidecar.refusalTtlSeconds`               | `10`                 | How long a refusal is remembered.                                                                                                                                                                     |
+| `sidecar.responseCache.enabled`           | `true`               | Whether responses are cached. With `false` the sidecar only checks permission.                                                                                                                        |
+| `sidecar.responseCache.ttlSeconds`        | `10800`              | How long a response is served before it is fetched again. Changes to the data take this long to show.                                                                                                 |
+| `sidecar.responseCache.maxSize`           | `1g`                 | Most disk the cached responses may take, in each pod.                                                                                                                                                 |
+| `sidecar.responseCache.volumeSize`        | `2Gi`                | Room for the cached responses and the remembered answers beside them.                                                                                                                                 |
+| `sidecar.workerConnections`               | `4096`               | Connections one worker may hold. A request in flight uses up to three.                                                                                                                                |
+| `sidecar.resources`                       | requests set         | Keep a CPU request here when autoscaling on CPU, which needs one on every container.                                                                                                                  |
+| `sidecar.securityContext`                 | unprivileged         | The sidecar runs as user 101 with a read-only root filesystem and no capabilities.                                                                                                                    |
 
 ### What to know before enabling it
 
