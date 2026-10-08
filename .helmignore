@@ -2,7 +2,9 @@
 # This supports shell glob matching, relative path matching, and
 # negation (prefixed with !). Only one pattern per line.
 .DS_Store
-# Common VCS dirs
+# Common VCS dirs. As a submodule this chart's .git is a file, which the
+# directory pattern below leaves behind.
+.git
 .git/
 .gitignore
 .bzr/
@@ -21,3 +23,5 @@
 .idea/
 *.tmproj
 .vscode/
+# Tests that are run from a checkout. Anchored, to leave templates/tests alone.
+/tests/
