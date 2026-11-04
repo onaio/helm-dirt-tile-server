@@ -44,6 +44,14 @@ spec:
           emptyDir: {}
         - name: var-volume
           emptyDir: {}
+        {{- if $.Values.sidecar.enabled }}
+        - name: sidecar-config
+          configMap:
+            name: {{ include "dirt-tile-server.fullname" $ }}-sidecar
+        - name: sidecar-cache
+          emptyDir:
+            sizeLimit: {{ $.Values.sidecar.responseCache.volumeSize }}
+        {{- end }}
       containers:
         - name: {{ $.Chart.Name }}
           securityContext:
@@ -125,15 +133,6 @@ spec:
             - name: sidecar-cache
               mountPath: /tmp
         {{- end }}
-      {{- if $.Values.sidecar.enabled }}
-      volumes:
-        - name: sidecar-config
-          configMap:
-            name: {{ include "dirt-tile-server.fullname" $ }}-sidecar
-        - name: sidecar-cache
-          emptyDir:
-            sizeLimit: {{ $.Values.sidecar.responseCache.volumeSize }}
-      {{- end }}
       {{- with $.Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
